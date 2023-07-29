@@ -5,23 +5,17 @@ const { JsonDB } = require("node-json-db");
 const { Config } = require("node-json-db/dist/lib/JsonDBConfig");
 const mime = require("mime-types");
 const FormData = require("form-data");
+const dotenv = require("dotenv");
 const path = require("path");
 const { readdir, stat, access, createReadStream, readFileSync } = require("fs-extra");
 const record = new JsonDB(new Config(process.env.d1 || "totalFiles_lh.json", true, true, "/"));
+
 const BASE_API_URL = "https://api.lighthouse.storage";
+dotenv.config();
 
-const token = process.env.token;
+const token = process.env.LIGHTHOUSE_TOKEN;
 
-async function fileExists(filePath) {
-  try {
-    await access(filePath);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-function readAndSliceJson(filepath, percent) {
+function readJson(filepath) {
   const rawData = readFileSync(filepath, "utf-8");
   const jsonData = JSON.parse(rawData);
 
@@ -57,7 +51,6 @@ async function download_from_ipfs(ipfs_hash, filename) {
             Authorization: "Bearer " + token,
           },
         });
-        await record.push(`/${ipfs_hash}`, filename);
         return [response.data, filename];
       }
     } catch (error) {
@@ -74,6 +67,7 @@ async function processJsonEntry(entryValue) {
   try {
     const response = await axios.get(`${BASE_API_URL}/api/lighthouse/file_info?cid=${entryValue[0]}`);
     console.log(`Processed ${JSON.stringify(response.data)}`);
+    await record.push(`/${entryValue[0]}`, entryValue[1]);
   } catch (e) {
     if (e.response?.status === 404) {
       const res = await download_from_ipfs(entryValue[0], entryValue[1]);
@@ -87,9 +81,9 @@ async function processJsonEntry(entryValue) {
 
 async function main() {
   // const jsonData = await record.getData("/");
-  const jsonData = readAndSliceJson("./totalFiles.json", 1);
+  const jsonData = readJson("./Pinata_totalFiles.json");
   const entries = Object.entries(jsonData); //.splice(100000);
-  const parallelLimit = 225; //os.cpus().length; // Set the limit to the number of CPU cores
+  const parallelLimit = 5; //os.cpus().length; // Set the limit to the number of CPU cores
 
   async.eachLimit(
     entries,

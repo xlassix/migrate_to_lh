@@ -1,7 +1,9 @@
 const axios = require("axios");
+const dotenv = require("dotenv");
 const { JsonDB } = require("node-json-db");
 const { Config } = require("node-json-db/dist/lib/JsonDBConfig");
-const record = new JsonDB(new Config(process.env.d1 || "totalFiles.json", true, true, "/"));
+const record = new JsonDB(new Config(process.env.d1 || "Pinata_totalFiles.json", true, true, "/"));
+dotenv.config();
 
 async function getNFTCount(bearerToken) {
   console.log("stark1");
@@ -37,7 +39,7 @@ async function getNFTCount(bearerToken) {
   return totalNFTs;
 }
 
-const bearerToken = process.env.bearerToken;
+const bearerToken = process.env.PINATA_JWT;
 getNFTCount(bearerToken)
   .then((nftCount) => {
     console.log(`There are ${nftCount} NFTs stored on Pinata.`);
