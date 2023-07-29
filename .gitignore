@@ -1,0 +1,15 @@
+
+.env
+env
+.vscode
+.mypy_cache
+backup
+node_modules
+main.py
+package-loc*
+*.log
+*.json
+lighthouse_full.json
+nohup.out
+Pipfile.*
+lighthouse_full.js
