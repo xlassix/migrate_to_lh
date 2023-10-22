@@ -13,3 +13,4 @@ lighthouse_full.json
 nohup.out
 Pipfile.*
 lighthouse_full.js
+*.db

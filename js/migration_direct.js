@@ -32,7 +32,7 @@ async function walk(dir) {
   return results;
 }
 
-const upload = async (sourcePath, token, multi, chunkSize = 2) => {
+const upload = async (sourcePath, token, multi, chunkSize = 10) => {
   const endpoint = BASEURL + `/api/v0/add?wrap-with-directory=${multi}`;
   const files = await walk(sourcePath);
   const mimeType = mime.lookup(sourcePath);
@@ -76,28 +76,30 @@ const upload = async (sourcePath, token, multi, chunkSize = 2) => {
     // console.log(response.data);
     results[`Chunk: ${count}`] = response.data;
     console.log(`Chunk: ${count}`);
-    const body = await Promise.all(
-      response.data.map(async (elem) => {
-        if (elem.Name == "") {
-          return;
-        }
-        try {
-          const data = await axios.post(`${BASE_API_URL}/api/lighthouse/add_cid_to_queue`, {
-            cid: elem.Hash,
-            name: elem.Name,
-            size: elem.Size,
-            publicKey,
-            encryption: false,
-            mimeType: mime.lookup(elem.Name.split("?")[0]),
-          });
-          unlinkSync(BASE_DIR + elem.Name);
-          return data.data;
-        } catch (e) {
-          console.log(e.response.data);
-        }
-      })
-    );
-    console.log(body);
+    if (multi) {
+      const body = await Promise.all(
+        response.data.map(async (elem) => {
+          if (elem.Name == "") {
+            return;
+          }
+          try {
+            const data = await axios.post(`${BASE_API_URL}/api/lighthouse/add_cid_to_queue`, {
+              cid: elem.Hash,
+              name: elem.Name,
+              size: elem.Size,
+              publicKey,
+              encryption: false,
+              mimeType: mime.lookup(elem.Name.split("?")[0]),
+            });
+            unlinkSync(BASE_DIR + elem.Name);
+            return data.data;
+          } catch (e) {
+            console.log(e.response.data);
+          }
+        })
+      );
+      console.log(body);
+    }
     await record.push(`/${count}`, response.data);
 
     count++;

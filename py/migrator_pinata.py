@@ -2,6 +2,9 @@ import requests
 import os
 import io
 import json
+import concurrent.futures
+import pandas as pd
+
 # from lighthouseweb3 import Lighthouse
 # storage_provider = Lighthouse(os.getenv('LIGHTHOUSE_TOKEN'))
 
@@ -28,7 +31,7 @@ def is_valid_json(b_string):
 
 # Load environment variables
 limit= 1000
-offset = 1783400
+offset = 0
 
 def parse_env(env_file=".env"):
     """parse .env file"""
@@ -84,6 +87,8 @@ def get_nft_count(offset,bearer_token):
     end_at=1850000
     has_more = True
     count=0
+    result=pd.DataFrame()
+
     while has_more:
         try:
             response = requests.get(f'https://api.pinata.cloud/data/pinList?status=pinned&pageLimit={limit}&pageOffset={offset}', headers={
@@ -91,13 +96,20 @@ def get_nft_count(offset,bearer_token):
             })
             response_data = response.json()
             total_nfts += len(response_data['rows'])
-            for i in response_data['rows']:
-                (download_from_ipfs(i["ipfs_pin_hash"],i["metadata"]["name"]))
-                count+=1
-                print(i["metadata"]["name"],offset+count)
-                if offset+count >= end_at:
-                    print(f"download from {offset} to {end_at} successfully")
-                    raise
+            # Using 100 threads (adjust as necessary)
+            cids= [i["ipfs_pin_hash"] for i in response_data['rows']]
+            filenames= [i["metadata"]["name"] for i in response_data['rows']]
+            with concurrent.futures.ThreadPoolExecutor(max_workers=100) as executor:
+                executor.map(download_from_ipfs, cids, filenames)
+
+            df = pd.json_normalize(response_data['rows'])
+
+            # If you want to extract the nested 'regions' field as separate columns
+            regions = pd.json_normalize(response_data['rows'], record_path='regions', meta='id')
+            df = df.merge(regions, on='id', how='left')
+
+            result = pd.concat([result, df]).reset_index(drop=True)
+            result.to_csv("pinata_data.csv")
             offset += limit
             has_more = offset < response_data['count']
             print(f"Pointer At {offset+count}")
